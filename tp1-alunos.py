@@ -137,6 +137,8 @@ def reactive_agent(observation):
     #print('observação:', observation)
     
     # Voltar a elevar a nave se estiver muito embaixo e fora da zona de pouso
+    #falta fazer comparacao com velocidades muito grandes para aumentar a potencia de counter. Atualmente a velocidade vx utilizada e a sua potencia de counter é muito baixa para
+    #contrariar movimento
     
     p = perceptions(observation)
     x, y, vx, vy, theta, vtheta, left_leg, right_leg = observation
