@@ -56,136 +56,77 @@ def simulate(steps=1000,seed=None, policy = None):
 
 
 # TODO: Defina as suas perceções aqui
+# --- PERCEÇÕES ---
 def perceptions(observation):
     x, y, vx, vy, theta, vtheta, leg_left, leg_right = observation
     
-    # --- Cálculos de Apoio (Controle Proporcional) ---
-    # Alvo: velocidade vertical suave
+    # Alvo de descida segura
     target_vy = -0.15
-    erro_vertical = target_vy - vy
-    
-    # Alvo: ângulo ideal para voltar ao centro (x=0)
-    # Se x > 0 (direita), target_theta deve ser positivo para inclinar para a esquerda
-    target_theta = np.clip(x * 0.7 + vx * 1.2, -0.4, 0.4)
-    # Erro de inclinação considerando a velocidade de rotação para amortecimento
-    erro_angular_com_amortecimento = (theta - target_theta) * 2.0 + (vtheta) * 1.5
+    # Alvo de inclinação para corrigir posição (x) e velocidade horizontal (vx)
+    target_theta = np.clip(x * 0.75 + vx * 1.2, -0.4, 0.4)
 
     return {
-        # Estado vertical (Main Engine)
-        "precisa_potencia_vertical": erro_vertical * 0.5 + (0.5 - y) * 0.1,
+        "erro_vertical": target_vy - vy,
+        "altura": y,
+        "distancia_centro": abs(x),
         "queda_perigosa": vy < -0.3,
-        "muito_baixo_fora_do_alvo": y < 0.2 and abs(x) > 0.1,
+        "fora_do_alvo_e_baixo": y < 0.2 and abs(x) > 0.1,
         
-        # Estado Lateral (Side Engine)
-        "comando_lateral_bruto": erro_angular_com_amortecimento,
+        # O cálculo do erro angular já inclui o amortecimento (vtheta)
+        "erro_angular_ajustado": (theta - target_theta) * 2.0 + (vtheta) * 1.5,
         
-        # Estados booleanos de segurança
-        "pernas_no_chao": leg_left == 1 and leg_right == 1,
-        "em_voo": leg_left == 0 or leg_right == 0
+        "pousado": leg_left == 1 and leg_right == 1
     }
 
+# --- AÇÕES (Funções de Controle) ---
 
-# TODO: Defina as suas ações aqui
-def reactive_agent(observation):
-    # Obtém o dicionário de percepções
-    p = perceptions(observation)
+def control_main_engine(p):
+    """Calcula a força do motor principal (0 a 1)"""
+    # Base proporcional: erro de velocidade + compensação de altitude
+    main = p["erro_vertical"] * 0.5 + (0.5 - p["altura"]) * 0.1
     
-    # 1. Condição de paragem (Pousou!)
-    if p["pernas_no_chao"]:
-        return np.array([0, 0])
-    
-    # --- MOTOR PRINCIPAL (MAIN ENGINE) ---
-    # Começamos com o cálculo proporcional da percepção
-    main = p["precisa_potencia_vertical"]
-
-    # Adicionamos potência extra baseada em percepções de risco
+    # Reforços de segurança
     if p["queda_perigosa"]: 
         main += 0.4
-    if p["muito_baixo_fora_do_alvo"]: 
+    if p["fora_do_alvo_e_baixo"]: 
         main += 0.3
         
-    main = np.clip(main, 0, 1)
+    return np.clip(main, 0, 1)
 
-    # --- MOTOR LATERAL (SIDE ENGINE) ---
-    # Extraímos o comando calculado na percepção
-    side = p["comando_lateral_bruto"]
-    
-    # Aplicação da Zona Morta do Enunciado (-0.5 a 0.5)
-    # Se o comando for necessário (correção mínima), forçamos para 0.51 ou -0.51
-    if 0.05 < abs(side) < 0.5:
-        side = 0.51 if side > 0 else -0.51
-    elif abs(side) <= 0.05:
-        side = 0.0 # Dentro de uma margem de erro desprezível
-        
-    side = np.clip(side, -1, 1)
 
-    return np.array([main, side])
+def control_side_engines(p):
+    """Calcula a força dos motores laterais (-1 a 1)"""
+    side = p["erro_angular_ajustado"]
     
+    # Regra do Enunciado: Zona Morta entre -0.5 e 0.5
+    if abs(side) < 0.5:
+        # Se o erro for relevante (> 0.05), forçamos a ativação mínima (0.51)
+        if abs(side) > 0.05:
+            side = 0.51 if side > 0 else -0.51
+        else:
+            side = 0.0 # Erro desprezível, desliga motores
+            
+    return np.clip(side, -1, 1)
+
+
+
+# --- AGENTE REATIVO ---
+
+def reactive_agent(observation):
+    # 1. Perceber o ambiente
+    p = perceptions(observation)
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    """
-    x, y, vx, vy, theta, vtheta, left_leg, right_leg = observation
-    
-    if left_leg == 1 and right_leg == 1:
+    # 2. Se já pousou, desliga tudo
+    if p["pousado"]:
         return np.array([0, 0])
     
-    main = 0.0
-    side = 0.0
-
-    if vy < -0.14 : main = 0.2
-
-    if abs(x) > 0.2:
-        
-        #Diminuir velocidade para quando estiver perto da plataforma
-        if x < 0 : # do lado esquerdo da plataforma
-            
-            if vx > 0 and x > -0.6: #muito perto da plataforma nao é preciso mais impulso
-                side = 0
-            else:
-                side = 0.51
-                
-        else: # do lado direito da plataforma
-            
-            if vx < 0 and x < 0.6: #muito perto da plataforma nao é preciso mais impulso
-                side = 0
-            else:
-                side = -0.51
-
-            
-    if abs(vx) > 0.2:
-        
-        if vx > 0:
-            side = -0.52
-        else :
-            side = 0.52
-        
-    #  Corrigir ângulo (suave)
-    if theta < np.deg2rad(-4):
-        side = -0.51
-    elif theta > np.deg2rad(4):# angulo a definir margem de erro(inclinação min)
-        side = 0.51
-        
-    # Controlar queda
-    if vy < -0.2:
-        main = 0.3
+    # 3. Executar ações baseadas nas perceções
+    main_power = control_main_engine(p)
+    side_power = control_side_engines(p)
     
-    # Salvar a nave de quedas fora da zona de pouso 
-    if y <= 0.5 and abs(x) > 0.2:
-        main = 0.4
-        
-
-    return np.array([main, side])
-        """
-
+    return np.array([main_power, side_power])
+    
+    
     
 def keyboard_agent(observation):
     action = [0,0] 
