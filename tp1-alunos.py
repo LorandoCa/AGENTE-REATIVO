@@ -54,93 +54,85 @@ def simulate(steps=1000,seed=None, policy = None):
     return step, success
 
 
-#Perceptions
-##TODO: Defina as suas perceções aqui
+
+# TODO: Defina as suas perceções aqui
 def perceptions(observation):
     x, y, vx, vy, theta, vtheta, leg_left, leg_right = observation
+    
+    # --- Cálculos de Apoio (Controle Proporcional) ---
+    # Alvo: velocidade vertical suave
+    target_vy = -0.15
+    erro_vertical = target_vy - vy
+    
+    # Alvo: ângulo ideal para voltar ao centro (x=0)
+    # Se x > 0 (direita), target_theta deve ser positivo para inclinar para a esquerda
+    target_theta = np.clip(x * 0.7 + vx * 1.2, -0.4, 0.4)
+    # Erro de inclinação considerando a velocidade de rotação para amortecimento
+    erro_angular_com_amortecimento = (theta - target_theta) * 2.0 + (vtheta) * 1.5
+
     return {
-        # Estado vertical
-        "queda_muito_rapida": vy < -0.9,
-        "queda_rapida": vy < -0.4,
-        "queda_moderada": vy < -0.25,
-        "queda_lenta": vy > -0.2,
+        # Estado vertical (Main Engine)
+        "precisa_potencia_vertical": erro_vertical * 0.5 + (0.5 - y) * 0.1,
+        "queda_perigosa": vy < -0.3,
+        "muito_baixo_fora_do_alvo": y < 0.2 and abs(x) > 0.1,
         
-        # Estado horizontal
-        "esquerda_do_centro": x < -0.2,
-        "direita_do_centro": x > 0.2,
-        "movendo_para_esquerda": vx < -0.5,
-        "movendo_para_direita": vx > 0.5,
+        # Estado Lateral (Side Engine)
+        "comando_lateral_bruto": erro_angular_com_amortecimento,
         
-        # Orientação 
-        "inclinado": abs(theta) > math.radians(8),
-        "inclinado_para_esquerda": theta > 0,
-        "velocidade_angular_alta": abs(vtheta) > 0.6,
-        "velocidade_angular_para_esquerda": vtheta > 0,
-        
-        # Altura
-        "alto": y > 1,
-        "medio": y > 0.5,
-        "baixo": y < LIMIAR,
-        
-        "pernas_no_chao": leg_left == 1 and leg_right == 1
+        # Estados booleanos de segurança
+        "pernas_no_chao": leg_left == 1 and leg_right == 1,
+        "em_voo": leg_left == 0 or leg_right == 0
     }
-    
-
-#Actions
-##TODO: Defina as suas ações aqui
-
-def acao_rodar_para_direita():
-    return np.array([0.0, 1])     # rodar direita
-
-def acao_rodar_para_esquerda():
-    return np.array([0.0, -1])    # rodar esquerda
-
-def acao_rodar_para_direita_leve():
-    return np.array([0.0, 0.4])     # rodar direita
-
-def acao_rodar_para_esquerda_leve():
-    return np.array([0.0, -0.4])    # rodar esquerda
-
-def acao_motor_potencia_muito_alta():
-    return np.array([0.9, 0.0])
-
-def acao_motor_potencia_media():
-    return np.array([0.7, 0.0])
-
-def acao_motor_potencia_alta():
-    return np.array([0.8, 0.0])
-
-def acao_motor_maximo():
-    return np.array([1, 0.0])       # motor principal potência máxima
-
-def action_correcao_eixo_esquerdo():
-    return np.array([0.3, -0.6])
-
-def action_correcao_eixo_direito():
-    return np.array([0.6, 0.3])
-
-def action_correcao_eixo_esquerdo_leve():
-    return np.array([0.2, -0.5])
-
-def action_correcao_eixo_direito_leve():
-    return np.array([0.2, 0.5])
-
-def no_action():
-    return np.array([0.0, 0.0])  # sem ação
 
 
+# TODO: Defina as suas ações aqui
 def reactive_agent(observation):
-    ##TODO: Implemente aqui o seu agente reativo
-    ##Substitua a linha abaixo pela sua implementação
-    #action = env.action_space.sample()
-    
-    #print('observação:', observation)
-    
-    # Voltar a elevar a nave se estiver muito embaixo e fora da zona de pouso
-    #falta fazer comparacao com velocidades muito grandes para aumentar a potencia de counter. Atualmente a velocidade vx utilizada e a sua potencia de counter é muito baixa para
-    #contrariar movimento
-    
+    # Obtém o dicionário de percepções
     p = perceptions(observation)
+    
+    # 1. Condição de paragem (Pousou!)
+    if p["pernas_no_chao"]:
+        return np.array([0, 0])
+    
+    # --- MOTOR PRINCIPAL (MAIN ENGINE) ---
+    # Começamos com o cálculo proporcional da percepção
+    main = p["precisa_potencia_vertical"]
+
+    # Adicionamos potência extra baseada em percepções de risco
+    if p["queda_perigosa"]: 
+        main += 0.4
+    if p["muito_baixo_fora_do_alvo"]: 
+        main += 0.3
+        
+    main = np.clip(main, 0, 1)
+
+    # --- MOTOR LATERAL (SIDE ENGINE) ---
+    # Extraímos o comando calculado na percepção
+    side = p["comando_lateral_bruto"]
+    
+    # Aplicação da Zona Morta do Enunciado (-0.5 a 0.5)
+    # Se o comando for necessário (correção mínima), forçamos para 0.51 ou -0.51
+    if 0.05 < abs(side) < 0.5:
+        side = 0.51 if side > 0 else -0.51
+    elif abs(side) <= 0.05:
+        side = 0.0 # Dentro de uma margem de erro desprezível
+        
+    side = np.clip(side, -1, 1)
+
+    return np.array([main, side])
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    """
     x, y, vx, vy, theta, vtheta, left_leg, right_leg = observation
     
     if left_leg == 1 and right_leg == 1:
@@ -192,7 +184,7 @@ def reactive_agent(observation):
         
 
     return np.array([main, side])
-        
+        """
 
     
 def keyboard_agent(observation):
