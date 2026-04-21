@@ -211,15 +211,8 @@ def Two_point_Crossover(p1, p2):
     
     # Para determinar o filho com maior fitness tem que se fazer uma avaliação 
     
-    # Avalia cada filho
-    fitness1 = simulate(filho1)[0]
-    fitness2 = simulate(filho2)[0]
-    
-    # Retorna o filho com maior fitness
-    if fitness1 > fitness2:
-        return {'genotype': filho1, 'fitness': None}
-    else:
-        return {'genotype': filho2, 'fitness': None}
+    # Devolve um dos filhos aleatoriamente — a avaliação fica para evaluate_population
+    return {'genotype': random.choice([filho1, filho2]), 'fitness': None}
     
      
 def gaussian_mutation(individual):
