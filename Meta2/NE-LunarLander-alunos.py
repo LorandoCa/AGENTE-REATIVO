@@ -34,7 +34,7 @@ PROB_MUTATION = 1.0/GENOTYPE_SIZE
 STD_DEV = 0.1
 
 
-ELITE_SIZE = 1
+ELITE_SIZE = 0
 
 def network(shape, observation,ind):
     #Computes the output of the neural network given the observation and the genotype
