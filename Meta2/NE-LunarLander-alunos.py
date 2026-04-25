@@ -68,13 +68,6 @@ def check_successful_landing(observation):
     return False
 
 def objective_function(observation_history):
-    #Computes the quality of the individual based 
-    #on the horizontal distance to the landing pad, the vertical velocity and the angle
-    #second_to_last_observation = observation_history[-2]
-    #x = second_to_last_observation[0]
-    #y = second_to_last_observation[1]
-    #return -abs(x) - abs(y), check_successful_landing(observation_history[-1])
-    
     ultima_obs = observation_history[-1]
     
     x = ultima_obs[0]
@@ -86,15 +79,33 @@ def objective_function(observation_history):
     perna_esquerda = ultima_obs[6]
     perna_direita = ultima_obs[7]
     
-    penalidade_distancia = abs(x) + abs(y)
-    penalidade_velocidade = abs(vx) + abs(vy)
-    penalidade_angulo = abs(theta) + abs(vtheta)
+    theta_norm = abs(theta) / np.pi # Normaliza variável theta
     
-    fitness = 1 / (1 + (2 * penalidade_distancia) + (1.5 * penalidade_velocidade) + (1.2 * penalidade_angulo))    
+    penalidade_distancia = abs(x) + abs(y)
+    penalidade_velocidade = abs(vx) + (2 * abs(vy))
+    penalidade_angulo = theta_norm + abs(vtheta)
+    
+    fitness_base = 1 / (1 + (2 * penalidade_distancia) + (1.5 * penalidade_velocidade) + (1.2 * penalidade_angulo))    
     # como a expressao anterior calcula a penalidade total, o objetivo da função fitness é maximizar a probabilidade de sobrevivencia.
     # Então quanto maior o acúmulo de penalidade, menor é o fitness. Portanto, tem que se fazer o inverso.
     
-    return fitness, check_successful_landing(ultima_obs)
+    min_distancia = min(
+        abs(obs[0]) + abs(obs[1])
+        for obs in observation_history
+    )
+    bonus_progresso = 0.1 * (1.0 / (1.0 + min_distancia))
+    
+    bonus_pernas = 0.0
+    if perna_esquerda == 1 and perna_direita == 1:
+        bonus_pernas = 0.2
+    elif perna_esquerda == 1 or perna_direita == 1:
+        bonus_pernas = 0.05
+        
+    bonus_sucesso = 1 if check_successful_landing(ultima_obs) else 0.0
+    
+    fitness_total = fitness_base + bonus_progresso + bonus_pernas + bonus_sucesso
+    
+    return fitness_total, check_successful_landing(ultima_obs)
     
     
 def simulate(genotype, render_mode = None, seed=None, env = None):
