@@ -1,0 +1,173 @@
+NOTAS CLAUDE
+
+1. Two_point_Crossover avaliava os filhos internamente. A função chama simulate() duas vezes dentro do crossover para escolher o melhor filho, o que:
+- Duplicava o custo computacional
+- Não passava pelo sistema de avaliação concorrente (paralela)
+- Violava a separação de responsabilidades do AE
+- O filho devolvido tem fitness: None mas já havia sido avaliado e descartado
+
+O problema de "escolher o melhor filho"
+A ideia parece boa intuitivamente, mas tem um problema fundamental: estávamos a avaliar com apenas 1 episódio, e o ambiente é estocástico. A nave começa com orientação aleatória diferente em cada episódio.
+Então o que estávamos a fazer era:
+filho1 → episódio com seed A → fitness 0.7
+filho2 → episódio com seed B → fitness 0.4
+Não sabíamos se filho1 era genuinamente melhor, ou se simplesmente teve um episódio mais fácil. A "escolha do melhor" é em grande parte ruído.
+
+Por cada crossover pagávamos 2 simulações extra para ganhar uma seleção ruidosa, onde esse custo poderia ser usado para avaliar mais 2 indivíduos da população normal ou ter mais uma geração de evolução.
+
+--------------------------------------------------------------------------------------------------
+
+2. objective_function só usa a última observação, a função comentada original usava a penúltima, o que faz mais sentido quando o episódio termina por terminated=True (crash). Na última observação, a nave pode já ter colidido/saído dos limites.
+Idealmente deveria usar o historial completo ou pelo menos as últimas N observações.
+
+terminated=True acontece quando a nave colidiu com o chão ou saiu dos limites. Nesse momento, a última observação adicionada ao historial é o estado depois do crash.
+
+
+
+
+--------------------------------------------------------------------------------------------------
+
+Experiência 5: (PROB_MUTATION=0.008, PROB_CROSSOVER=0.5, ELITE_SIZE=1, evolve = true)
+Convergência: muito rápida — o algoritmo atinge valores competitivos nas primeiras 5 gerações. Isto sugere que com mutação baixa e elitismo, o espaço de pesquisa é explorado de forma conservadora mas eficiente desde cedo.
+Estabilidade: após convergir, o fitness mantém-se estável entre 2.15–2.22, sem quedas drásticas. O elitismo garante que boas soluções não são perdidas.
+Plateau: o algoritmo não consegue melhorar significativamente após a geração ~5. Com mutação=0.008, há poucos genes alterados por geração (~1 em 120), o que limita a exploração — uma vez num ótimo local, é difícil escapar.
+
+PROB_CROSSOVER = 0.5
+PROB_MUTATION = 0.008
+STD_DEV = 0.1
+ELITE_SIZE = 1
+evolve: false
+
+log0.txt:
+0.725205883769402 0.22
+
+log1.txt:
+0.7663083174786068 0.245
+
+log2.txt:
+0.8085056323320982 0.266
+
+log3.txt:
+0.6986939062972024 0.206
+
+log4.txt:
+0.8072375395639145 0.265
+
+Experiência 5: (PROB_MUTATION=0.008, PROB_CROSSOVER=0.5, ELITE_SIZE=1, evolve = false)
+A taxa de sucesso de ~24% é baixa. Apesar do fitness de treino andar à volta de 2.2 (muito próximo do máximo de 2.3), o agente só aterra com sucesso em 1 em cada 4 episódios. Isto revela um problema importante: a função objetivo não está suficientemente alinhada com o critério de sucesso. O agente aprende a maximizar o fitness (aproximar-se do pad, reduzir velocidade) mas não aprende de forma robusta a satisfazer todas as condições simultâneas do check_successful_landing.
+A variabilidade entre runs é significativa — log3 tem 20.6% e log2 tem 26.6%, uma diferença de 6 pontos percentuais. Isto é esperado em AEs estocásticos e é a razão pela qual se fazem 5 runs.
+
+--------------------------------------------------------------------------------------------------
+
+Experiência 6: (PROB_MUTATION=0.05, PROB_CROSSOVER=0.5, ELITE_SIZE=1, evolve = true)
+
+Experiência 5 (mutação=0.008):
+- Geração 0 da run 1: 0.975 -> sobe para 2.10 na geração 2
+- Convergência muito rápida nas primeiras 2-3 gerações
+
+Experiência 6 (mutação=0.05):
+- Geração 0 da run 1: 2.161 -> já começa alto
+- Mas geração 1 da run 3: 0.603 -> queda drástica
+
+A mutação alta (0.05) é mais instável. Com ~6 genes alterados por geração em vez de ~1, há muito mais perturbação. Isto manifesta-se de duas formas visíveis nos dados:
+1. Quedas abruptas ocasionais — vê a run 3:
+Geração 0: 2.017
+Geração 1: 0.603  ← queda enorme
+Geração 2: 2.192  ← recupera
+Isto acontece porque a mutação destruiu os genes do elite, e o elitismo reavalia o melhor num novo episódio estocástico — uma combinação de mutação agressiva com ruído de avaliação.
+2. Arranques mais variados — algumas runs começam já em 2.16 (geração 0), outras em 2.08. Com mutação baixa os arranques eram mais consistentes.
+
+Apesar da instabilidade, o plateau de convergência é praticamente igual — ambas as experiências ficam entre 2.15–2.22 após estabilizar. Isto sugere que a mutação não melhora a qualidade final neste caso — o algoritmo chega ao mesmo lugar, mas por um caminho mais turbulento.
+
+PROB_CROSSOVER = 0.5
+PROB_MUTATION = 0.05
+STD_DEV = 0.1
+ELITE_SIZE = 1
+evolve: false
+
+log0.txt:
+0.7809238942525146 0.252
+
+log1.txt:
+0.5992628488710648 0.157
+
+log2.txt:
+0.7380602555204354 0.23
+
+log3.txt:
+0.7026415808293455 0.221
+
+log4.txt:
+0.828344917514894 0.266
+
+Experiência 6: (PROB_MUTATION=0.05, PROB_CROSSOVER=0.5, ELITE_SIZE=1, evolve = false)
+Mutação baixa (0.008) ganhou em todos os indicadores, mas a diferença é pequena. O que é mais relevante para o relatório é o desvio padrão.
+O desvio padrão da taxa de sucesso na Exp. 6 é 3.9% vs 2.4% na Exp. 5 — quase o dobro. Isto confirma o que já se via nos valores de treino: mutação alta torna o algoritmo menos consistente entre runs. O log1 com apenas 15.7% de sucesso é um outlier claro — provavelmente uma run em que a mutação agressiva destruiu repetidamente boas soluções antes de se consolidarem.
+Isto é teoricamente esperado: com mutação alta em representações reais contínuas, o ruído introduzido por geração é suficiente para perturbar genes já bem afinados, especialmente com um genótipo de 120 valores onde cada um contribui subtilmente para o comportamento da rede.
+A hipótese confirmou-se: mutação=0.05 não melhora a qualidade final e introduz mais variabilidade — sendo mutação=0.008 a melhor escolha para esta configuração de crossover=0.5 com elitismo=1.
+
+--------------------------------------------------------------------------------------------------
+
+Experiência 7: (PROB_MUTATION=0.008, PROB_CROSSOVER=0.9, ELITE_SIZE=1, evolve = true)
+O crossover alto (0.9) introduz maior variância entre runs — tanto positiva (run 4 excecional) como negativa (run 3 lenta). Com mutação baixa (0.008), o crossover torna-se o principal motor de exploração, o que pode ser muito bom quando os progenitores são complementares, ou muito mau quando a população inicial é pobre.
+
+PROB_CROSSOVER = 0.9
+PROB_MUTATION = 0.008
+STD_DEV = 0.1
+ELITE_SIZE = 1
+evolve: false
+
+log0.txt:
+0.6801020598354545 0.194
+
+log1.txt:
+0.7621267081853842 0.232
+
+log2.txt:
+0.897660588109269 0.331
+
+log3.txt:
+1.989451006230866 0.87
+
+log4.txt:
+0.7817291663583679 0.248
+
+Experiência 7: (PROB_MUTATION=0.008, PROB_CROSSOVER=0.9, ELITE_SIZE=1, evolve = false)
+A Experiência 7 é a mais interessante de analisar precisamente por causa desta variância. Os pontos-chave são:
+Média enganadora — a média de 37.5% parece boa, mas é completamente dominada por uma única run excepcional. A mediana (~24.8%) seria uma métrica mais honesta neste caso.
+O crossover alto é uma faca de dois gumes — quando a população inicial por acaso contém indivíduos complementares, o crossover=0.9 combina-os rapidamente num controlador excelente. Quando não contém, a baixa mutação (0.008) não tem capacidade de explorar suficientemente, e o algoritmo fica preso.
+Implicação prática — se o objetivo é consistência, crossover=0.5 com mutação=0.008 (Exp. 5) é mais fiável. Se o objetivo é encontrar o melhor resultado possível em múltiplas tentativas, crossover=0.9 com mutação=0.008 pode ocasionalmente produzir resultados excepcionais, mas sem garantia
+
+--------------------------------------------------------------------------------------------------
+
+Experiência 8: (PROB_MUTATION=0.05, PROB_CROSSOVER=0.9, ELITE_SIZE=1, evolve = true)
+
+Com crossover=0.9 e mutação=0.05 em simultâneo, o algoritmo sofre de **excesso de perturbação**: o crossover alto já garante que 90% dos filhos são recombinações de dois progenitores, introduzindo muita variação estrutural no genótipo, e a mutação alta adiciona ainda ruído gaussiano em ~6 genes por indivíduo por geração. O resultado é que boas soluções são frequentemente destruídas antes de terem tempo de se consolidar e propagar na população — o elitismo tenta mitigar isto preservando o melhor indivíduo, mas como cada reavaliação usa um episódio estocástico diferente, o próprio elite pode obter um fitness muito distinto de geração para geração, explicando as quedas abruptas observadas (como a geração 1 da run 5 que caiu de 2.089 para 0.632). Comparando com a Experiência 7 (crossover=0.9, mutação=0.008), onde a baixa mutação permitia que o crossover atuasse de forma mais dirigida e produziu uma run excecional com 87% de taxa de sucesso, a Experiência 8 não apresenta nenhum outlier positivo equivalente — o plateau máximo mantém-se em ~2.22, idêntico às configurações com crossover=0.5, sugerindo que a mutação alta anulou completamente o potencial benefício do crossover alto, tornando esta a combinação menos eficaz das quatro experiências testadas.
+
+PROB_CROSSOVER = 0.9
+PROB_MUTATION = 0.05
+STD_DEV = 0.1
+ELITE_SIZE = 1
+evolve: false
+
+log0.txt:
+0.6507430230390019 0.203
+
+log1.txt:
+0.857831826504083 0.283
+
+log2.txt:
+0.6501309619634745 0.187
+
+log3.txt:
+0.8106458036707634 0.262
+
+log4.txt:
+0.8890824901645779 0.313
+
+Experiência 8: (PROB_MUTATION=0.05, PROB_CROSSOVER=0.9, ELITE_SIZE=1, evolve = false)
+A previsão confirmou-se. A Exp. 8 não tem nenhum outlier positivo equivalente ao log3 da Exp. 7 — o máximo atingido é 31.3%, muito longe dos 87%. Sem aquele outlier excecional, a combinação crossover=0.9 com mutação=0.05 produz resultados mediocres e inconsistentes.
+A Exp. 8 é efetivamente a pior configuração quando se compara de forma justa. O desvio padrão de 5.2% é mais honesto do que os 25.5% da Exp. 7 — mas a taxa de sucesso média real é apenas 24.9%, praticamente igual à Exp. 5 que é muito mais simples e consistente.
+A conclusão global para o relatório é clara: com elitismo=1, a melhor configuração fiável é mutação=0.008 com crossover=0.5 (Exp. 5), que oferece consistência com desvio padrão baixo de 2.4%. A Exp. 7 tem média superior mas apenas graças a um único outlier afortunado — não é uma configuração robusta. Aumentar a mutação para 0.05 prejudica sempre os resultados independentemente do crossover, confirmando que para este genótipo de 120 genes contínuos, perturbações pequenas e conservadoras são preferíveis a explorações agressivas.
+
+

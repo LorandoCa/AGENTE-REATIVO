@@ -28,11 +28,10 @@ for i in range(1, len(SHAPE)):
 
 POPULATION_SIZE = 100
 NUMBER_OF_GENERATIONS = 100
-PROB_CROSSOVER = 0.9
+PROB_CROSSOVER = 0.5
 
-PROB_MUTATION = 1.0/GENOTYPE_SIZE
+PROB_MUTATION = 0.008
 STD_DEV = 0.1
-
 
 ELITE_SIZE = 0
 
@@ -68,46 +67,31 @@ def check_successful_landing(observation):
     return False
 
 def objective_function(observation_history):
-    ultima_obs = observation_history[-1]
-    
-    x = ultima_obs[0]
-    y = ultima_obs[1]
-    vx = ultima_obs[2]
-    vy = ultima_obs[3]
-    theta = ultima_obs[4]
-    vtheta = ultima_obs[5]
-    perna_esquerda = ultima_obs[6]
-    perna_direita = ultima_obs[7]
-    
-    theta_norm = abs(theta) / np.pi # Normaliza variável theta
-    
-    penalidade_distancia = abs(x) + abs(y)
-    penalidade_velocidade = abs(vx) + (2 * abs(vy))
-    penalidade_angulo = theta_norm + abs(vtheta)
-    
-    fitness_base = 1 / (1 + (2 * penalidade_distancia) + (1.5 * penalidade_velocidade) + (1.2 * penalidade_angulo))    
-    # como a expressao anterior calcula a penalidade total, o objetivo da função fitness é maximizar a probabilidade de sobrevivencia.
-    # Então quanto maior o acúmulo de penalidade, menor é o fitness. Portanto, tem que se fazer o inverso.
-    
-    min_distancia = min(
-        abs(obs[0]) + abs(obs[1])
-        for obs in observation_history
-    )
-    bonus_progresso = 0.1 * (1.0 / (1.0 + min_distancia))
-    
-    bonus_pernas = 0.0
-    if perna_esquerda == 1 and perna_direita == 1:
-        bonus_pernas = 0.2
-    elif perna_esquerda == 1 or perna_direita == 1:
-        bonus_pernas = 0.05
-        
-    bonus_sucesso = 1 if check_successful_landing(ultima_obs) else 0.0
-    
-    fitness_total = fitness_base + bonus_progresso + bonus_pernas + bonus_sucesso
-    
-    return fitness_total, check_successful_landing(ultima_obs)
-    
-    
+    last = observation_history[-1]
+    x, y, vx, vy, theta, vtheta, left, right = last
+
+    success = check_successful_landing(last)
+
+    # Estabilidade pré-aterragem (últimas 10 observações)
+    last_n = observation_history[-10:]
+    avg_vy  = np.mean([obs[3] for obs in last_n])  # velocidade vertical média
+    avg_vx  = np.mean([abs(obs[2]) for obs in last_n])  # velocidade horizontal média
+    avg_vth = np.mean([abs(obs[5]) for obs in last_n])  # velocidade angular média
+
+    # Cada componente normalizado para [0, 1]
+    x_score       = max(0.0, 1.0 - abs(x) / 1.0)
+    vy_score      = max(0.0, 1.0 - abs(avg_vy) / 2.0)   # usa média, não só o último
+    vx_score      = max(0.0, 1.0 - avg_vx / 2.0)
+    theta_score   = max(0.0, 1.0 - abs(theta) / 0.5)
+    vstab_score   = max(0.0, 1.0 - avg_vth / 1.0)       # estabilidade angular
+    legs_score    = (left + right) / 2.0
+
+    fitness = (0.25*x_score + 0.25*vy_score + 0.15*vx_score
+             + 0.15*theta_score + 0.10*vstab_score + 0.10*legs_score)
+
+
+    return fitness, success
+
 def simulate(genotype, render_mode = None, seed=None, env = None):
     #Simulates an episode of Lunar Lander, evaluating an individual
     env_was_none = env is None
@@ -141,7 +125,7 @@ def evaluate(evaluationQueue, evaluatedQueue):
     env = gym.make("LunarLander-v3", render_mode =None, 
         continuous=True, gravity=GRAVITY, 
         enable_wind=ENABLE_WIND, wind_power=WIND_POWER, 
-        turbulence_power=TURBULENCE_POWER)    
+        turbulence_power=TURBULENCE_POWER) 
     while True:
         ind = evaluationQueue.get()
 
@@ -226,6 +210,7 @@ def Two_point_Crossover(p1, p2):
     return {'genotype': random.choice([filho1, filho2]), 'fitness': None}
     
      
+'''
 def gaussian_mutation(individual):
     mutated = [
         max(-1, min(1, gene + random.gauss(0, STD_DEV))) 
@@ -234,8 +219,31 @@ def gaussian_mutation(individual):
         for gene in individual['genotype']
     ]
     return {'genotype': mutated, 'fitness': None}
-    
-    
+
+def range_inversion_mutation(individual):
+    genotype = list(individual['genotype'])
+    if random.random() < PROB_MUTATION:
+        # Seleciona um intervalo (range) aleatório
+        idx1 = random.randint(0, len(genotype) - 1)
+        idx2 = random.randint(idx1, len(genotype) - 1)
+        
+        # Flips: Inverte o sinal dos valores no range ou reflete-os
+        for i in range(idx1, idx2 + 1):
+            genotype[i] = -genotype[i] # Inversão de sinal simples
+            
+    return {'genotype': genotype, 'fitness': None}
+'''
+
+def simulated_bit_flip_mutation(individual):
+    mutated_genotype = []
+    for gene in individual['genotype']:
+        if random.random() < PROB_MUTATION:
+            # "Flipping" o valor para algo totalmente novo
+            mutated_genotype.append(random.uniform(-1, 1))
+        else:
+            mutated_genotype.append(gene)
+    return {'genotype': mutated_genotype, 'fitness': None}
+
 
 #--------------------------------------END-----------------------------------------#
 
@@ -263,7 +271,7 @@ def mutation(p):
     #Para evitar a destruição de genes, causamos ruidos moderados (sigma =  0.1) nos genes. Estes ruidos moderados causam uma pequena alteração em cada gene
     #Portanto a funcao devolve um genótipo alterado num distribuição gaussiana
     
-    return gaussian_mutation(p) 
+    return simulated_bit_flip_mutation(p) 
     
 def survival_selection(population, offspring):
     #reevaluation of the elite
@@ -372,7 +380,6 @@ if __name__ == '__main__':
         ind = b[2]
             
         ind = {'genotype': ind, 'fitness': None}
-            
             
         ntests = TEST_EPISODES
 
