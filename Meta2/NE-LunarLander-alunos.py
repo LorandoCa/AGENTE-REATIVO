@@ -5,6 +5,8 @@ import gymnasium as gym
 import os
 from multiprocessing import Process, Queue
 
+import matplotlib.pyplot as plt
+
 # CONFIG
 ENABLE_WIND = False
 WIND_POWER = 15.0
@@ -28,13 +30,13 @@ for i in range(1, len(SHAPE)):
 
 POPULATION_SIZE = 100
 NUMBER_OF_GENERATIONS = 100
-PROB_CROSSOVER = 0.9
+PROB_CROSSOVER = 0.5
 
-PROB_MUTATION = 1.0/GENOTYPE_SIZE
-STD_DEV = 0.1
+PROB_MUTATION = 0.05
+STD_DEV = 0.2
 
 
-ELITE_SIZE = 0
+ELITE_SIZE = 1
 
 def network(shape, observation,ind):
     #Computes the output of the neural network given the observation and the genotype
@@ -67,36 +69,41 @@ def check_successful_landing(observation):
         return True
     return False
 
+
+
+
 def objective_function(observation_history):
-    #Computes the quality of the individual based 
-    #on the horizontal distance to the landing pad, the vertical velocity and the angle
-    #second_to_last_observation = observation_history[-2]
-    #x = second_to_last_observation[0]
-    #y = second_to_last_observation[1]
-    #return -abs(x) - abs(y), check_successful_landing(observation_history[-1])
+    # Vamos olhar para as ultimas 3 observações
+    last_observation = np.mean(observation_history[-3:], axis = 0)
     
-    ultima_obs = observation_history[-1]
+    # Extração dos parâmetros:
+    x_dist = last_observation[0]    # Distância horizontal ao centro
+    y_vel  = last_observation[3]    # Velocidade vertical
+    angle  = last_observation[4]    # Ângulo (em radianos)
     
-    x = ultima_obs[0]
-    y = ultima_obs[1]
-    vx = ultima_obs[2]
-    vy = ultima_obs[3]
-    theta = ultima_obs[4]
-    vtheta = ultima_obs[5]
-    perna_esquerda = ultima_obs[6]
-    perna_direita = ultima_obs[7]
+    # --- Cálculo da Qualidade (Fitness) ---
     
-    penalidade_distancia = abs(x) + abs(y)
-    penalidade_velocidade = abs(vx) + abs(vy)
-    penalidade_angulo = abs(theta) + abs(vtheta)
+    # 1. Penalizar a distância horizontal (queremos x perto de 0)
+    fitness = -abs(x_dist) * 100
     
-    fitness = 1 / (1 + (2 * penalidade_distancia) + (1.5 * penalidade_velocidade) + (1.2 * penalidade_angulo))    
-    # como a expressao anterior calcula a penalidade total, o objetivo da função fitness é maximizar a probabilidade de sobrevivencia.
-    # Então quanto maior o acúmulo de penalidade, menor é o fitness. Portanto, tem que se fazer o inverso.
+    # 2. Penalizar a velocidade vertical 
+    # (Se cair muito rápido, o valor de y_vel é muito negativo, ex: -1.5)
+    # Queremos que no momento do toque a velocidade seja próxima de 0.
+    fitness -= abs(y_vel) * 50
     
-    return fitness, check_successful_landing(ultima_obs)
-    
-    
+    # 3. Penalizar o ângulo 
+    # (Queremos o lander o mais "em pé" possível, ou seja, ângulo 0)
+    fitness -= abs(angle) * 50
+
+    # 4. Bónus de Sucesso
+    success = check_successful_landing(last_observation)
+    if success:
+        fitness += 500  # Recompensa por pousar em segurança
+        
+    return fitness, success
+
+
+
 def simulate(genotype, render_mode = None, seed=None, env = None):
     #Simulates an episode of Lunar Lander, evaluating an individual
     env_was_none = env is None
@@ -136,9 +143,12 @@ def evaluate(evaluationQueue, evaluatedQueue):
 
         if ind is None:
             break
-            
-        ind['fitness'] = simulate(ind['genotype'], seed = None, env = env)[0]
-                
+        
+        # alterado para obter um accuracy melhor do genotipo. Obtendo uma media, faz com que o resultado seja livre de ruidos de uma só execução   
+        N = 1
+        fitnesses = [simulate(ind['genotype'], seed=None, env=env)[0] for _ in range(N)]
+        ind['fitness'] = np.mean(fitnesses)
+
         evaluatedQueue.put(ind)
     env.close()
     
@@ -173,7 +183,7 @@ def generate_initial_population():
 #------------------Funções adicionadas para maior percepção-----------------------#
 
 
-def tournament_selection(population, k=10): # Considerar afinar o parâmetro
+def tournament_selection(population, k=20): # Considerar afinar o parâmetro
     #Escolhe k indivíduos aleatórios
     tournament = random.sample(population, k)
     
@@ -327,7 +337,7 @@ if __name__ == '__main__':
 
     #Pick a setting from below
     #--to evolve the controller--    
-    evolve = True
+    evolve = False
     render_mode = None
 
     #--to test the evolved controller without visualisation--
@@ -352,22 +362,52 @@ if __name__ == '__main__':
 
                 
     else:
-        #test evolved individuals
-        #pick the file to test
-        filename = 'log0.txt'
-        bests = load_bests(filename)
-        b = bests[-1]
-        SHAPE = b[1]
-        ind = b[2]
-            
-        ind = {'genotype': ind, 'fitness': None}
-            
-            
-        ntests = TEST_EPISODES
+        filenames = [f'log{i}.txt' for i in range(5)]
+        results = []
+        
+        # Criamos uma figura grande para os 5 gráficos
+        plt.figure(figsize=(15, 10))
 
-        fit, success = 0, 0
-        for i in range(1,ntests+1):
-            f, s = simulate(ind['genotype'], render_mode=render_mode, seed = None)
-            fit += f
-            success += s
-        print(fit/ntests, success/ntests)
+        for idx, filename in enumerate(filenames):
+            # 1. Carregar dados para o gráfico de convergência
+            bests = load_bests(filename)
+            generations_fitness = [b[0] for b in bests]
+            
+            # 2. Testar o melhor indivíduo para obter a taxa de sucesso
+            # Usamos o último da lista (final da evolução)
+            b = bests[-1]
+            SHAPE = b[1]
+            ind = b[2]
+            
+            fit_total, success_total = 0, 0
+          
+            ntests = TEST_EPISODES 
+            
+            print(f"A testar {filename}...")
+            for _ in range(ntests):
+                f, s = simulate(ind, render_mode=render_mode, seed=None)
+                fit_total += f
+                success_total += s
+            
+            success_rate = (success_total / ntests) * 100
+            avg_fitness = fit_total / ntests
+            results.append((avg_fitness, success_rate/100))
+
+            # 3. Criar o Subplot associado
+            plt.subplot(2, 3, idx + 1)
+            plt.plot(generations_fitness, color='blue', linewidth=2)
+            
+            # Título dinâmico com a taxa de sucesso
+            plt.title(f"{filename}\nSucesso: {success_rate:.1f}%", fontsize=12, fontweight='bold')
+            plt.xlabel("Geração")
+            plt.ylabel("Fitness (Melhor da Gen)")
+            plt.grid(True, linestyle='--', alpha=0.7)
+            
+            # Adiciona uma linha horizontal no 0 para referência
+            plt.axhline(0, color='red', linewidth=0.8, linestyle='-')
+
+        plt.tight_layout()
+        plt.savefig('graficos_convergencia.png')
+        print("Gráfico guardado como 'graficos_convergencia.png'")
+
+
