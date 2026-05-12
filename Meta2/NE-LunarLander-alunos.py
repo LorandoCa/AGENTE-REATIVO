@@ -80,9 +80,10 @@ def objective_function(observation_history):
     x_dist = last_observation[0]    # Distância horizontal ao centro
     y_vel  = last_observation[3]    # Velocidade vertical
     angle  = last_observation[4]    # Ângulo (em radianos)
-    
+
     # --- Cálculo da Qualidade (Fitness) ---
     
+
     # 1. Penalizar a distância horizontal (queremos x perto de 0)
     fitness = -abs(x_dist) * 100
     
