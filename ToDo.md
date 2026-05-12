@@ -38,3 +38,15 @@ diferentes abordagens.
 
 
 Plano de horas de trabalho: Quando possivel, fazer um ponto do relatorio. Fazê-lo bem feito.
+
+
+
+
+O que isto te diz para os próximos passos?
+Se tivesses de entregar o trabalho agora, o teu "piloto" oficial seria o do log3.txt. No entanto, para tornar o algoritmo mais robusto (para que todas as rondas fossem como a 3), as recomendações seriam:
+
+Aumentar o Elitismo: Se mantivesses os 5 ou 10 melhores, a "receita" do sucesso da Ronda 3 espalhar-se-ia com mais segurança.
+
+Aumentar a Amostragem (N > 1): A Ronda 3 pode ter tido sorte com terrenos fáceis. Avaliar cada indivíduo 3 ou 5 vezes (tirando a média) filtraria os "falsos heróis".
+
+Pressão Seletiva: O teu torneio de 10 em 100 é bom, mas talvez pudesses experimentar aumentar ligeiramente a mutação quando a população para de evoluir.
