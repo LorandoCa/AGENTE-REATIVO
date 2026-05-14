@@ -225,7 +225,35 @@ def Two_point_Crossover(p1, p2):
     # Devolve um dos filhos aleatoriamente — a avaliação fica para evaluate_population
     return {'genotype': random.choice([filho1, filho2]), 'fitness': None}
     
-     
+    
+def uniform_crossover(p1, p2):
+    g1 = p1['genotype']
+    g2 = p2['genotype']
+    
+    child = []
+    for i in range(GENOTYPE_SIZE):
+        if random.random() < 0.5:
+            child.append(g1[i])
+        else:
+            child.append(g2[i])
+    
+    return {'genotype': child, 'fitness': None}
+
+
+def arithmetic_crossover(p1, p2):
+    g1 = p1['genotype']
+    g2 = p2['genotype']
+    
+    alpha = random.random()  # entre 0 e 1
+    
+    child = []
+    for i in range(GENOTYPE_SIZE):
+        gene = alpha * g1[i] + (1 - alpha) * g2[i]
+        child.append(gene)
+    
+    return {'genotype': child, 'fitness': None}
+    
+    
 def gaussian_mutation(individual):
     mutated = [
         max(-1, min(1, gene + random.gauss(0, STD_DEV))) 
@@ -234,7 +262,6 @@ def gaussian_mutation(individual):
         for gene in individual['genotype']
     ]
     return {'genotype': mutated, 'fitness': None}
-    
     
 
 #--------------------------------------END-----------------------------------------#
