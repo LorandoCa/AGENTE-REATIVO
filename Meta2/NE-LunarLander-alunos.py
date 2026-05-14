@@ -30,7 +30,7 @@ for i in range(1, len(SHAPE)):
 
 POPULATION_SIZE = 100
 NUMBER_OF_GENERATIONS = 100
-PROB_CROSSOVER = 0.5
+PROB_CROSSOVER = 0.9
 
 PROB_MUTATION = 0.008
 STD_DEV = 0.2
@@ -251,7 +251,7 @@ def uniform_crossover(p1, p2):
     return {'genotype': child, 'fitness': None}
 
 
-def arithmetic_crossover(p1, p2):
+def arithmetic_crossover(p1, p2): # bad
     g1 = p1['genotype']
     g2 = p2['genotype']
     
@@ -277,7 +277,7 @@ def gaussian_mutation(individual):
     
 
 
-'''     
+ 
 def uniform_mutation(individual):
     mutated = [
         # Adiciona um valor aleatório uniforme entre -STD_DEV e STD_DEV
@@ -288,7 +288,7 @@ def uniform_mutation(individual):
         for gene in individual['genotype']
     ]
     return {'genotype': mutated, 'fitness': None}
-'''
+
     
 #--------------------------------------END-----------------------------------------#
 
@@ -299,7 +299,7 @@ def parent_selection(population):
         #Para isto vamos usar a tournament selection. Em que a probabilidade de escolha de um indivíduo depende da sua fitness e tambem de ser escolhida na primeira escolha aleatoria no grupo 
         #Consideramos tournament selection visto que dá mais probabilidade de escolha a elementos mais aptos, permitindo explorar regiões mais promissoras devido a 1ª escolha aleatoria de individuos.
         #Esta estratégia também é a mais indicada para uma população pequena. Para um aumento da populacao inicial, considerar a experimentação de roulet wheel.     
-    return roulette_wheel_selection(population)
+    return tournament_selection(population, 20)
 
 def crossover(p1, p2):
     #Create an offspring from the individuals p1 and p2
