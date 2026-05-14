@@ -196,18 +196,29 @@ def tournament_selection(population, k=20): # Considerar afinar o parâmetro
 
 
 def roulette_wheel_selection(population):
-    # 1. Soma total do fitness de todos os indivíduos
-    total_fitness = sum(ind['fitness'] for ind in population)
+    # Handle empty population
+    if not population:
+        return None
+
+    # For LunarLander, fitness is often negative. 
+    # We shift everyone's fitness so the minimum is at least a small positive number.
+    min_fitness = min(ind['fitness'] for ind in population)
     
-    # 2. Gera um número aleatório entre 0 e o total
+    # Use an offset so even the worst individual has a tiny chance (and total_fitness > 0)
+    offset = abs(min_fitness) + 1.0
+    
+    total_fitness = sum(ind['fitness'] + offset for ind in population)
     pick = random.uniform(0, total_fitness)
     
-    # 3. Percorre a população acumulando fitness até ultrapassar o pick
     current = 0
     for ind in population:
-        current += ind['fitness']
+        current += (ind['fitness'] + offset)
         if current >= pick:
             return ind
+            
+    # Fallback: If floating point errors happen, return the last individual
+    return population[-1]
+
 
 
 def Two_point_Crossover(p1, p2):
@@ -225,6 +236,36 @@ def Two_point_Crossover(p1, p2):
     # Devolve um dos filhos aleatoriamente — a avaliação fica para evaluate_population
     return {'genotype': random.choice([filho1, filho2]), 'fitness': None}
     
+    
+def uniform_crossover(p1, p2):
+    g1 = p1['genotype']
+    g2 = p2['genotype']
+    
+    child = []
+    for i in range(GENOTYPE_SIZE):
+        if random.random() < 0.5:
+            child.append(g1[i])
+        else:
+            child.append(g2[i])
+    
+    return {'genotype': child, 'fitness': None}
+
+
+def arithmetic_crossover(p1, p2):
+    g1 = p1['genotype']
+    g2 = p2['genotype']
+    
+    alpha = random.random()  # entre 0 e 1
+    
+    child = []
+    for i in range(GENOTYPE_SIZE):
+        gene = alpha * g1[i] + (1 - alpha) * g2[i]
+        child.append(gene)
+    
+    return {'genotype': child, 'fitness': None}
+    
+    
+    
 def gaussian_mutation(individual):
     mutated = [
         max(-1, min(1, gene + random.gauss(0, STD_DEV))) 
@@ -233,6 +274,8 @@ def gaussian_mutation(individual):
         for gene in individual['genotype']
     ]
     return {'genotype': mutated, 'fitness': None}
+    
+
 
 '''     
 def uniform_mutation(individual):
@@ -256,7 +299,7 @@ def parent_selection(population):
         #Para isto vamos usar a tournament selection. Em que a probabilidade de escolha de um indivíduo depende da sua fitness e tambem de ser escolhida na primeira escolha aleatoria no grupo 
         #Consideramos tournament selection visto que dá mais probabilidade de escolha a elementos mais aptos, permitindo explorar regiões mais promissoras devido a 1ª escolha aleatoria de individuos.
         #Esta estratégia também é a mais indicada para uma população pequena. Para um aumento da populacao inicial, considerar a experimentação de roulet wheel.     
-    return tournament_selection(population, 10)
+    return roulette_wheel_selection(population)
 
 def crossover(p1, p2):
     #Create an offspring from the individuals p1 and p2
