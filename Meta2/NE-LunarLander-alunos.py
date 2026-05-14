@@ -32,7 +32,7 @@ POPULATION_SIZE = 100
 NUMBER_OF_GENERATIONS = 100
 PROB_CROSSOVER = 0.5
 
-PROB_MUTATION = 0.05
+PROB_MUTATION = 0.008
 STD_DEV = 0.2
 
 
@@ -225,7 +225,6 @@ def Two_point_Crossover(p1, p2):
     # Devolve um dos filhos aleatoriamente — a avaliação fica para evaluate_population
     return {'genotype': random.choice([filho1, filho2]), 'fitness': None}
     
-     
 def gaussian_mutation(individual):
     mutated = [
         max(-1, min(1, gene + random.gauss(0, STD_DEV))) 
@@ -234,9 +233,20 @@ def gaussian_mutation(individual):
         for gene in individual['genotype']
     ]
     return {'genotype': mutated, 'fitness': None}
-    
-    
 
+'''     
+def uniform_mutation(individual):
+    mutated = [
+        # Adiciona um valor aleatório uniforme entre -STD_DEV e STD_DEV
+        # O max(-1, min(1, ...)) garante que o gene não ultrapassa os limites físicos dos motores [-1, 1]
+        max(-1, min(1, gene + random.uniform(-STD_DEV, STD_DEV))) 
+        if random.random() < PROB_MUTATION 
+        else gene
+        for gene in individual['genotype']
+    ]
+    return {'genotype': mutated, 'fitness': None}
+'''
+    
 #--------------------------------------END-----------------------------------------#
 
 def parent_selection(population):
@@ -259,9 +269,9 @@ def crossover(p1, p2):
 def mutation(p):
     #Mutate the individual p
     
-    #Para a implementação de mutation escolhemos a mutação gaussiana visto para populações reduzidas visto que a diversidade é reduzida.
+    #Para a implementação de mutation escolhemos a mutação uniforme visto para populações reduzidas visto que a diversidade é reduzida.
     #Para evitar a destruição de genes, causamos ruidos moderados (sigma =  0.1) nos genes. Estes ruidos moderados causam uma pequena alteração em cada gene
-    #Portanto a funcao devolve um genótipo alterado num distribuição gaussiana
+    #Portanto a funcao devolve um genótipo alterado num distribuição uniforme
     
     return gaussian_mutation(p) 
     
