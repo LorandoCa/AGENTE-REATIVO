@@ -36,7 +36,7 @@ PROB_MUTATION = 0.008
 STD_DEV = 0.2
 
 
-ELITE_SIZE = 1
+ELITE_SIZE = 0
 
 def network(shape, observation,ind):
     #Computes the output of the neural network given the observation and the genotype
@@ -192,9 +192,7 @@ def tournament_selection(population, k=20): # Considerar afinar o parâmetro
     winner = max(tournament, key=lambda ind: ind['fitness'])
     return winner
 
-
-
-
+'''
 def roulette_wheel_selection(population):
     # Handle empty population
     if not population:
@@ -218,7 +216,7 @@ def roulette_wheel_selection(population):
             
     # Fallback: If floating point errors happen, return the last individual
     return population[-1]
-
+'''
 
 
 def Two_point_Crossover(p1, p2):
@@ -251,7 +249,8 @@ def uniform_crossover(p1, p2):
     return {'genotype': child, 'fitness': None}
 
 
-def arithmetic_crossover(p1, p2): # bad
+'''
+def arithmetic_crossover(p1, p2):
     g1 = p1['genotype']
     g2 = p2['genotype']
     
@@ -263,8 +262,8 @@ def arithmetic_crossover(p1, p2): # bad
         child.append(gene)
     
     return {'genotype': child, 'fitness': None}
-    
-    
+'''  
+
     
 def gaussian_mutation(individual):
     mutated = [
@@ -276,8 +275,6 @@ def gaussian_mutation(individual):
     return {'genotype': mutated, 'fitness': None}
     
 
-
- 
 def uniform_mutation(individual):
     mutated = [
         # Adiciona um valor aleatório uniforme entre -STD_DEV e STD_DEV
@@ -289,7 +286,6 @@ def uniform_mutation(individual):
     ]
     return {'genotype': mutated, 'fitness': None}
 
-    
 #--------------------------------------END-----------------------------------------#
 
 def parent_selection(population):
@@ -308,6 +304,7 @@ def crossover(p1, p2):
     # Esta diversidade é importante para manter o variedade de genes e permitir chegar a melhores soluções.
     
     return Two_point_Crossover(p1, p2)
+    # return uniform_crossover(p1, p2)
 
 def mutation(p):
     #Mutate the individual p
@@ -317,6 +314,7 @@ def mutation(p):
     #Portanto a funcao devolve um genótipo alterado num distribuição uniforme
     
     return gaussian_mutation(p) 
+    # return uniform_mutation(p)
     
 def survival_selection(population, offspring):
     #reevaluation of the elite
@@ -391,7 +389,7 @@ if __name__ == '__main__':
 
     #Pick a setting from below
     #--to evolve the controller--    
-    evolve = False
+    evolve = True
     render_mode = None
 
     #--to test the evolved controller without visualisation--
@@ -416,11 +414,18 @@ if __name__ == '__main__':
 
                 
     else:
+         # --- Define aqui quais funções foram usadas para esta ronda de gráficos ---
+        CROSSOVER_USADO = "Two_point_Crossover"  # "Two_point_Crossover" ou "uniform_crossover"
+        MUTACAO_USADA = "gaussian_mutation"       # "gaussian_mutation" ou "uniform_mutation"
+        
         filenames = [f'log{i}.txt' for i in range(5)]
         results = []
         
         # Criamos uma figura grande para os 5 gráficos
-        plt.figure(figsize=(15, 10))
+        fig = plt.figure(figsize=(15, 10))
+
+        fig.suptitle(f"Funções Utilizadas - Crossover: {CROSSOVER_USADO} | Mutação: {MUTACAO_USADA}", 
+                     fontsize=16, fontweight='bold', y=0.98)
 
         for idx, filename in enumerate(filenames):
             # 1. Carregar dados para o gráfico de convergência
@@ -461,6 +466,8 @@ if __name__ == '__main__':
             plt.axhline(0, color='red', linewidth=0.8, linestyle='-')
 
         plt.tight_layout()
+        # Ajusta o topo para o super título não sobrepor os gráficos
+        plt.subplots_adjust(top=0.90) 
         plt.savefig('graficos_convergencia.png')
         print("Gráfico guardado como 'graficos_convergencia.png'")
 
