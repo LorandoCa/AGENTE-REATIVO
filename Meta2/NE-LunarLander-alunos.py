@@ -196,18 +196,29 @@ def tournament_selection(population, k=20): # Considerar afinar o parâmetro
 
 
 def roulette_wheel_selection(population):
-    # 1. Soma total do fitness de todos os indivíduos
-    total_fitness = sum(ind['fitness'] for ind in population)
+    # Handle empty population
+    if not population:
+        return None
+
+    # For LunarLander, fitness is often negative. 
+    # We shift everyone's fitness so the minimum is at least a small positive number.
+    min_fitness = min(ind['fitness'] for ind in population)
     
-    # 2. Gera um número aleatório entre 0 e o total
+    # Use an offset so even the worst individual has a tiny chance (and total_fitness > 0)
+    offset = abs(min_fitness) + 1.0
+    
+    total_fitness = sum(ind['fitness'] + offset for ind in population)
     pick = random.uniform(0, total_fitness)
     
-    # 3. Percorre a população acumulando fitness até ultrapassar o pick
     current = 0
     for ind in population:
-        current += ind['fitness']
+        current += (ind['fitness'] + offset)
         if current >= pick:
             return ind
+            
+    # Fallback: If floating point errors happen, return the last individual
+    return population[-1]
+
 
 
 def Two_point_Crossover(p1, p2):
@@ -246,7 +257,7 @@ def parent_selection(population):
         #Para isto vamos usar a tournament selection. Em que a probabilidade de escolha de um indivíduo depende da sua fitness e tambem de ser escolhida na primeira escolha aleatoria no grupo 
         #Consideramos tournament selection visto que dá mais probabilidade de escolha a elementos mais aptos, permitindo explorar regiões mais promissoras devido a 1ª escolha aleatoria de individuos.
         #Esta estratégia também é a mais indicada para uma população pequena. Para um aumento da populacao inicial, considerar a experimentação de roulet wheel.     
-    return tournament_selection(population, 10)
+    return roulette_wheel_selection(population)
 
 def crossover(p1, p2):
     #Create an offspring from the individuals p1 and p2
