@@ -32,7 +32,7 @@ POPULATION_SIZE = 100
 NUMBER_OF_GENERATIONS = 100
 PROB_CROSSOVER = 0.9
 
-PROB_MUTATION = 0.008
+PROB_MUTATION = 0.05
 STD_DEV = 0.2
 
 
@@ -74,7 +74,7 @@ def check_successful_landing(observation):
 
 def objective_function(observation_history):
     # Vamos olhar para as ultimas 3 observações
-    last_observation = np.mean(observation_history[-3:], axis = 0)
+    last_observation = np.mean(observation_history[-10:], axis = 0)
     
     # Extração dos parâmetros:
     x_dist = last_observation[0]    # Distância horizontal ao centro
@@ -95,11 +95,15 @@ def objective_function(observation_history):
     # 3. Penalizar o ângulo 
     # (Queremos o lander o mais "em pé" possível, ou seja, ângulo 0)
     fitness -= abs(angle) * 50
+    
+    # 4. Penalizacao para pés
+    fitness -= ( (last_observation[-2] - 1)**2 + (last_observation[-1] - 1)**2 ) * 50
+    
 
     # 4. Bónus de Sucesso
     success = check_successful_landing(last_observation)
-    if success:
-        fitness += 500  # Recompensa por pousar em segurança
+    #if success:
+    #    fitness += 200  # Recompensa por pousar em segurança
         
     return fitness, success
 
@@ -389,7 +393,7 @@ if __name__ == '__main__':
 
     #Pick a setting from below
     #--to evolve the controller--    
-    evolve = True
+    evolve = False
     render_mode = None
 
     #--to test the evolved controller without visualisation--
@@ -424,8 +428,8 @@ if __name__ == '__main__':
         # Criamos uma figura grande para os 5 gráficos
         fig = plt.figure(figsize=(15, 10))
 
-        fig.suptitle(f"Funções Utilizadas - Crossover: {CROSSOVER_USADO} | Mutação: {MUTACAO_USADA}", 
-                     fontsize=16, fontweight='bold', y=0.98)
+        #fig.suptitle(f"Funções Utilizadas - Crossover: {CROSSOVER_USADO} | Mutação: {MUTACAO_USADA}", 
+        #             fontsize=16, fontweight='bold', y=0.98)
 
         for idx, filename in enumerate(filenames):
             # 1. Carregar dados para o gráfico de convergência
