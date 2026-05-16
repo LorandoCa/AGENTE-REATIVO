@@ -30,13 +30,13 @@ for i in range(1, len(SHAPE)):
 
 POPULATION_SIZE = 100
 NUMBER_OF_GENERATIONS = 100
-PROB_CROSSOVER = 0.9
+PROB_CROSSOVER = 0.5
 
-PROB_MUTATION = 0.05
+PROB_MUTATION = 0.008
 STD_DEV = 0.2
 
 
-ELITE_SIZE = 0
+ELITE_SIZE = 1
 
 def network(shape, observation,ind):
     #Computes the output of the neural network given the observation and the genotype
@@ -83,14 +83,13 @@ def objective_function(observation_history):
 
     # --- Cálculo da Qualidade (Fitness) ---
     
-
     # 1. Penalizar a distância horizontal (queremos x perto de 0)
     fitness = -abs(x_dist) * 100
     
     # 2. Penalizar a velocidade vertical 
     # (Se cair muito rápido, o valor de y_vel é muito negativo, ex: -1.5)
     # Queremos que no momento do toque a velocidade seja próxima de 0.
-    fitness -= abs(y_vel) * 50
+    fitness -= abs(y_vel) * 100
     
     # 3. Penalizar o ângulo 
     # (Queremos o lander o mais "em pé" possível, ou seja, ângulo 0)
@@ -196,7 +195,7 @@ def tournament_selection(population, k=20): # Considerar afinar o parâmetro
     winner = max(tournament, key=lambda ind: ind['fitness'])
     return winner
 
-'''
+
 def roulette_wheel_selection(population):
     # Handle empty population
     if not population:
@@ -220,7 +219,7 @@ def roulette_wheel_selection(population):
             
     # Fallback: If floating point errors happen, return the last individual
     return population[-1]
-'''
+
 
 
 def Two_point_Crossover(p1, p2):
@@ -266,7 +265,7 @@ def arithmetic_crossover(p1, p2):
         child.append(gene)
     
     return {'genotype': child, 'fitness': None}
-'''  
+'''
 
     
 def gaussian_mutation(individual):
@@ -389,90 +388,107 @@ def load_bests(fname):
             bests.append(( eval(fitness),eval(shape), eval(genotype)))
     return bests
 
+
+
+
 if __name__ == '__main__':
 
-    #Pick a setting from below
-    #--to evolve the controller--    
     evolve = False
     render_mode = None
 
-    #--to test the evolved controller without visualisation--
-    #evolve = False
-    #render_mode = None
+    # Combinações do enunciado (Tabela 2)
+    # (prob_mutation, prob_crossover, elite_size)
+    experiments = [
+        (0.008, 0.5, 0),  # Exp 1
+        (0.05,  0.5, 0),  # Exp 2
+        (0.008, 0.9, 0),  # Exp 3
+        (0.05,  0.9, 0),  # Exp 4
+        (0.008, 0.5, 1),  # Exp 5
+        (0.05,  0.5, 1),  # Exp 6
+        (0.008, 0.9, 1),  # Exp 7
+        (0.05,  0.9, 1),  # Exp 8
+    ]
 
-    #--to test the evolved controller with visualisation--
-    #evolve = False
-    #render_mode = 'human'
-    
-    
+    n_runs = 5
+    seeds = [964, 952, 364, 913, 140, 726, 112, 631, 881, 844,
+             965, 672, 335, 611, 457, 591, 551, 538, 673, 437,
+             513, 893, 709, 489, 788, 709, 751, 467, 596, 976,
+             101, 202, 303, 404, 505, 606, 707, 808, 909, 100]
+
     if evolve:
-        #evolve individuals
-        n_runs = 5
-        seeds = [964, 952, 364, 913, 140, 726, 112, 631, 881, 844, 965, 672, 335, 611, 457, 591, 551, 538, 673, 437, 513, 893, 709, 489, 788, 709, 751, 467, 596, 976]
-        for i in range(n_runs):    
-            random.seed(seeds[i])
-            bests = evolution()
-            with open(f'log{i}.txt', 'w') as f:
-                for b in bests:
-                    f.write(f'{b[1]}\t{SHAPE}\t{b[0]}\n')
+        log_counter = 0
+        for exp_idx, (prob_mut, prob_cross, elite) in enumerate(experiments):
+            PROB_MUTATION = prob_mut
+            PROB_CROSSOVER = prob_cross
+            ELITE_SIZE = elite
 
-                
+            exp_folder = f'exp{exp_idx+1}_mut{prob_mut}_cross{prob_cross}_elite{elite}'
+            os.makedirs(exp_folder, exist_ok=True)
+
+            print(f"\n=== Experiência {exp_idx+1}/8 | "
+                f"mut={prob_mut} cross={prob_cross} elite={elite} ===")
+
+            for run in range(n_runs):
+                print(f"  Run {run+1}/{n_runs} -> {exp_folder}/log{run}.txt")
+                random.seed(seeds[log_counter])
+                bests = evolution()
+                with open(f'{exp_folder}/log{run}.txt', 'w') as f:
+                    for b in bests:
+                        f.write(f'{b[1]}\t{SHAPE}\t{b[0]}\n')
+                log_counter += 1
+    
     else:
-         # --- Define aqui quais funções foram usadas para esta ronda de gráficos ---
-        CROSSOVER_USADO = "Two_point_Crossover"  # "Two_point_Crossover" ou "uniform_crossover"
-        MUTACAO_USADA = "gaussian_mutation"       # "gaussian_mutation" ou "uniform_mutation"
-        
-        filenames = [f'log{i}.txt' for i in range(5)]
-        results = []
-        
-        # Criamos uma figura grande para os 5 gráficos
-        fig = plt.figure(figsize=(15, 10))
+        CROSSOVER_USADO = "Two_point_Crossover"
+        MUTACAO_USADA = "gaussian_mutation"
+        SELECAO_USADA = "tournament_selection"
 
-        #fig.suptitle(f"Funções Utilizadas - Crossover: {CROSSOVER_USADO} | Mutação: {MUTACAO_USADA}", 
-        #             fontsize=16, fontweight='bold', y=0.98)
+        colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown', 'pink', 'gray']
 
-        for idx, filename in enumerate(filenames):
-            # 1. Carregar dados para o gráfico de convergência
-            bests = load_bests(filename)
-            generations_fitness = [b[0] for b in bests]
-            
-            # 2. Testar o melhor indivíduo para obter a taxa de sucesso
-            # Usamos o último da lista (final da evolução)
-            b = bests[-1]
-            SHAPE = b[1]
-            ind = b[2]
-            
-            fit_total, success_total = 0, 0
-          
-            ntests = TEST_EPISODES 
-            
-            print(f"A testar {filename}...")
-            for _ in range(ntests):
-                f, s = simulate(ind, render_mode=render_mode, seed=None)
-                fit_total += f
-                success_total += s
-            
-            success_rate = (success_total / ntests) * 100
-            avg_fitness = fit_total / ntests
-            results.append((avg_fitness, success_rate/100))
+        fig = plt.figure(figsize=(14, 7))
 
-            # 3. Criar o Subplot associado
-            plt.subplot(2, 3, idx + 1)
-            plt.plot(generations_fitness, color='blue', linewidth=2)
-            
-            # Título dinâmico com a taxa de sucesso
-            plt.title(f"{filename}\nSucesso: {success_rate:.1f}%", fontsize=12, fontweight='bold')
-            plt.xlabel("Geração")
-            plt.ylabel("Fitness (Melhor da Gen)")
-            plt.grid(True, linestyle='--', alpha=0.7)
-            
-            # Adiciona uma linha horizontal no 0 para referência
-            plt.axhline(0, color='red', linewidth=0.8, linestyle='-')
+        for exp_idx, (prob_mut, prob_cross, elite) in enumerate(experiments):
+            exp_folder = f'exp{exp_idx+1}_mut{prob_mut}_cross{prob_cross}_elite{elite}'
+            color = colors[exp_idx]
 
+            all_fitness = []
+            success_rates = []
+
+            for run in range(n_runs):
+                filename = f'{exp_folder}/log{run}.txt'
+                bests = load_bests(filename)
+                all_fitness.append([b[0] for b in bests])
+
+                b = bests[-1]
+                SHAPE = b[1]
+                ind = b[2]
+
+                success_total = 0
+                print(f"A testar {filename}...")
+                for _ in range(TEST_EPISODES):
+                    _, s = simulate(ind, render_mode=render_mode, seed=None)
+                    success_total += s
+                success_rates.append((success_total / TEST_EPISODES) * 100)
+
+            mean_fitness = np.mean(np.array(all_fitness), axis=0)
+            std_fitness  = np.std(np.array(all_fitness), axis=0)
+            avg_success  = np.mean(success_rates)
+            generations  = range(len(mean_fitness))
+
+            plt.plot(generations, mean_fitness, linewidth=2, color=color,
+                    label=f"Exp{exp_idx+1} | mut={prob_mut} cross={prob_cross} elite={elite} (Sucesso: {avg_success:.1f}%)")
+            plt.fill_between(generations,
+                            mean_fitness - std_fitness,
+                            mean_fitness + std_fitness,
+                            alpha=0.1, color=color)
+
+        plt.title(f"Comparação das 8 Experiências\nCrossover: {CROSSOVER_USADO} | Mutação: {MUTACAO_USADA} | Seleção: {SELECAO_USADA}",
+                fontsize=13, fontweight='bold')
+        plt.xlabel("Geração", fontsize=11)
+        plt.ylabel("Fitness Médio", fontsize=11)
+        plt.grid(True, linestyle='--', alpha=0.7)
+        plt.axhline(0, color='red', linewidth=1, linestyle='-', alpha=0.7, label="Referência (0)")
+        plt.legend(loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0, fontsize=10)
         plt.tight_layout()
-        # Ajusta o topo para o super título não sobrepor os gráficos
-        plt.subplots_adjust(top=0.90) 
-        plt.savefig('graficos_convergencia.png')
-        print("Gráfico guardado como 'graficos_convergencia.png'")
-
-
+        plt.savefig('comparacao_experiencias.png', bbox_inches='tight')
+        plt.close()
+        print("Gráfico guardado como 'comparacao_experiencias.png'")
