@@ -8,7 +8,7 @@ from multiprocessing import Process, Queue
 import matplotlib.pyplot as plt
 
 # CONFIG
-ENABLE_WIND = False
+ENABLE_WIND = True
 WIND_POWER = 15.0
 TURBULENCE_POWER = 0.0
 GRAVITY = -10.0
@@ -23,20 +23,20 @@ evaluatedQueue = Queue()
 
 nInputs = 8
 nOutputs = 2
-SHAPE = (nInputs,12,nOutputs)
+SHAPE = (nInputs,24,nOutputs) # neuronios duplicados
 GENOTYPE_SIZE = 0
 for i in range(1, len(SHAPE)):
     GENOTYPE_SIZE += SHAPE[i-1]*SHAPE[i]
 
 POPULATION_SIZE = 100
-NUMBER_OF_GENERATIONS = 100
+NUMBER_OF_GENERATIONS = 150
 PROB_CROSSOVER = 0.5
 
-PROB_MUTATION = 0.008
+PROB_MUTATION = 0.1
 STD_DEV = 0.2
 
 
-ELITE_SIZE = 1
+ELITE_SIZE = 0
 
 def network(shape, observation,ind):
     #Computes the output of the neural network given the observation and the genotype
@@ -81,10 +81,10 @@ def objective_function(observation_history):
     y_vel  = last_observation[3]    # Velocidade vertical
     angle  = last_observation[4]    # Ângulo (em radianos)
 
-    # --- Cálculo da Qualidade (Fitness) ---
     
     # 1. Penalizar a distância horizontal (queremos x perto de 0)
-    fitness = -abs(x_dist) * 100
+    # Aumentar a penalizacao para ser mais exigente com casos
+    fitness = -abs(x_dist) * 150
     
     # 2. Penalizar a velocidade vertical 
     # (Se cair muito rápido, o valor de y_vel é muito negativo, ex: -1.5)
@@ -97,7 +97,7 @@ def objective_function(observation_history):
     
     # 4. Penalizacao para pés
     fitness -= ( (last_observation[-2] - 1)**2 + (last_observation[-1] - 1)**2 ) * 50
-    
+
     # 4. Bónus de Sucesso
     success = check_successful_landing(last_observation)
     #if success:
@@ -148,7 +148,7 @@ def evaluate(evaluationQueue, evaluatedQueue):
             break
         
         # alterado para obter um accuracy melhor do genotipo. Obtendo uma media, faz com que o resultado seja livre de ruidos de uma só execução   
-        N = 1
+        N = 3
         fitnesses = [simulate(ind['genotype'], seed=None, env=env)[0] for _ in range(N)]
         ind['fitness'] = np.mean(fitnesses)
 
@@ -194,7 +194,7 @@ def tournament_selection(population, k=20): # Considerar afinar o parâmetro
     winner = max(tournament, key=lambda ind: ind['fitness'])
     return winner
 
-
+'''
 def roulette_wheel_selection(population):
     # Handle empty population
     if not population:
@@ -218,7 +218,7 @@ def roulette_wheel_selection(population):
             
     # Fallback: If floating point errors happen, return the last individual
     return population[-1]
-
+'''
 
 
 def Two_point_Crossover(p1, p2):
@@ -264,7 +264,7 @@ def arithmetic_crossover(p1, p2):
         child.append(gene)
     
     return {'genotype': child, 'fitness': None}
-'''
+'''  
 
     
 def gaussian_mutation(individual):
@@ -298,7 +298,6 @@ def parent_selection(population):
         #Consideramos tournament selection visto que dá mais probabilidade de escolha a elementos mais aptos, permitindo explorar regiões mais promissoras devido a 1ª escolha aleatoria de individuos.
         #Esta estratégia também é a mais indicada para uma população pequena. Para um aumento da populacao inicial, considerar a experimentação de roulet wheel.     
     return tournament_selection(population, 20)
-    #return roulette_wheel_selection(population)
 
 def crossover(p1, p2):
     #Create an offspring from the individuals p1 and p2
@@ -306,8 +305,8 @@ def crossover(p1, p2):
     # Para a implementação do crossover escolhemos o two point crossover para populações reduzidas ( < 500, exemplo ) visto que permite manter uma maior diversidade de genótipo.
     # Esta diversidade é importante para manter o variedade de genes e permitir chegar a melhores soluções.
     
-    #return Two_point_Crossover(p1, p2)
-    return uniform_crossover(p1, p2)
+    return Two_point_Crossover(p1, p2)
+    # return uniform_crossover(p1, p2)
 
 def mutation(p):
     #Mutate the individual p
@@ -316,8 +315,8 @@ def mutation(p):
     #Para evitar a destruição de genes, causamos ruidos moderados (sigma =  0.1) nos genes. Estes ruidos moderados causam uma pequena alteração em cada gene
     #Portanto a funcao devolve um genótipo alterado num distribuição uniforme
     
-    #return gaussian_mutation(p) 
-    return uniform_mutation(p)
+    return gaussian_mutation(p) 
+    # return uniform_mutation(p)
     
 def survival_selection(population, offspring):
     #reevaluation of the elite
@@ -388,9 +387,6 @@ def load_bests(fname):
             bests.append(( eval(fitness),eval(shape), eval(genotype)))
     return bests
 
-
-
-
 if __name__ == '__main__':
 
     evolve = True
@@ -399,14 +395,7 @@ if __name__ == '__main__':
     # Combinações do enunciado (Tabela 2)
     # (prob_mutation, prob_crossover, elite_size)
     experiments = [
-        (0.008, 0.5, 0),  # Exp 1
-        (0.05,  0.5, 0),  # Exp 2
-        (0.008, 0.9, 0),  # Exp 3
-        (0.05,  0.9, 0),  # Exp 4
-        (0.008, 0.5, 1),  # Exp 5
-        (0.05,  0.5, 1),  # Exp 6
-        (0.008, 0.9, 1),  # Exp 7
-        (0.05,  0.9, 1),  # Exp 8
+        (0.1,  0.5, 0),  #Parametros com melhor resultado na meta 1
     ]
 
     n_runs = 5
@@ -438,9 +427,9 @@ if __name__ == '__main__':
                 log_counter += 1
     
     else:
-        CROSSOVER_USADO = "Uniform_Crossover" # Introdizir o nome da funcao usada no crossover. Nota: Preencher na funcao de crossover tambem
-        MUTACAO_USADA = "Uniform_mutation" # Introdizir o nome da funcao usada na mutation. Nota: Preencher na funcao de mutation tambem
-        SELECAO_USADA = "roulette_wheel_selection" # Introdizir o nome da funcao usada na selection. Nota: Preencher na funcao de selection tambem
+        CROSSOVER_USADO = "Two_Point_Crossover"
+        MUTACAO_USADA = "gaussian_mutation"
+        SELECAO_USADA = "tournament_selection"
         
 
         colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown', 'pink', 'gray']
