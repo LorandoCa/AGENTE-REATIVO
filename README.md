@@ -132,3 +132,37 @@ Executa o seguinte comando no terminal (WSL / Linux / Windows) para instalar tod
 
 ```bash
 pip install "gymnasium[box2d]" numpy matplotlib pygame
+```
+---
+## 🚀 Como Executar
+
+### 1. Agente Reativo (`agente_reativo.py`)
+
+Executa o agente baseado em regras e controlo proporcional no ambiente standard:
+
+```bash
+python agente_reativo.py
+```
+Modo Gráfico: Por padrão, o script abre a janela de simulação (RENDER_MODE = 'human').
+
+Testes Rápidos: Para desativar a interface gráfica e acelerar as simulações, altera no topo do ficheiro a variável para RENDER_MODE = NONE.
+
+### 2.1 Neuroevolução - Sem Vento e vento (AI_agent_withoutWind.py e AI_agent_withWind.py)
+
+Para o modo de Treino (Evolução das 8 Experiências) garante que a variável no fundo do script está definida como `evolve` = True.
+
+#### Modo de Teste e Geração de Gráficos
+Para o modo de Treino (Evolução das 8 Experiências) garante que a variável no fundo do script está definida como `evolve` = False.
+Isto lê os logs gerados, simula 1000 episódios com o melhor indivíduo e guarda a imagem comparacao_experiencias.png.
+
+### 🚀 Execução:
+
+```bash
+python AI_agent_withoutWind.py
+```
+Ou 
+```bash
+python AI_agent_withoutWind.py
+```
+
+
