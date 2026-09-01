@@ -153,4 +153,15 @@ Ou
 python AI_agent_withoutWind.py
 ```
 
+## 👥 Autores
+
+| Nome | Número de Estudante | Email |
+| :--- | :---: | :--- |
+| **Lorando Cá** | 2022195277 | [uc2022195277@student.uc.pt](mailto:uc2022195277@student.uc.pt) |
+| **Pedro Ferreira** | 2023112367 | [uc2023112367@student.uc.pt](mailto:uc2023112367@student.uc.pt) |
+| **Raphael Kuwae** | 2023222627 | [uc2023222627@student.uc.pt](mailto:uc2023222627@student.uc.pt) |
+
+---
+*Projeto desenvolvido no âmbito da licenciatura em Engenharia Informática — Universidade de Coimbra.
+
 
