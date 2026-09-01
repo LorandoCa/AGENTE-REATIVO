@@ -20,7 +20,6 @@ Este repositório contém a implementação e comparação de duas abordagens di
   - [Arquitetura da Rede Neuronal](#arquitetura-da-rede-neuronal)
   - [Operadores Evolutivos & Fitness](#operadores-evolutivos--fitness)
   - [Grelha de Experiências (Meta 1 & Meta 2)](#grelha-de-experiências)
-- [Estrutura do Repositório](#-estrutura-do-repositório)
 - [Requisitos e Instalação](#-requisitos-e-instalação)
 - [Como Executar](#-como-executar)
 - [Resultados Obtidos](#-resultados-obtidos)
@@ -98,17 +97,7 @@ O algoritmo foi testado através de 8 experiências distintas parametrizadas da 
 
 ---
 
-## 📁 Estrutura do Repositório
-
-```text
-.
-├── agente_reativo.py         # Agente reativo baseado em regras e controlo proporcional
-├── AI_agent_withoutWind.py   # Neuroevolução no ambiente sem vento (12 neurónios ocultos)
-├── AI_agent_withWind.py      # Neuroevolução no ambiente com vento e turbulência (24 neurónios ocultos)
-└── README.md                 # Documentação do projeto
-```
----
-## 🛠️ Requisitos e Instalação
+## Requisitos e Instalação
 
 ### **Pré-requisitos**
 * **Python 3.10+** 
