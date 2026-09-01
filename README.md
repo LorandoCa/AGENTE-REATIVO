@@ -106,3 +106,29 @@ O algoritmo foi testado através de 8 experiências distintas parametrizadas da 
 ├── AI_agent_withoutWind.py   # Neuroevolução no ambiente sem vento (12 neurónios ocultos)
 ├── AI_agent_withWind.py      # Neuroevolução no ambiente com vento e turbulência (24 neurónios ocultos)
 └── README.md                 # Documentação do projeto
+```
+
+## 🛠️ Requisitos e Instalação
+
+### **Pré-requisitos**
+* **Python 3.10+** 
+  *(Nota: As bibliotecas `random`, `copy`, `os` e `multiprocessing` pertencem à biblioteca padrão do Python e não requerem instalação).*
+
+---
+
+### **Bibliotecas Necessárias**
+
+| Módulo Importado | Pacote `pip` | Função no Projeto |
+| :--- | :--- | :--- |
+| `numpy` | `numpy` | Computação vetorial e operações matriciais da rede neuronal |
+| `gymnasium` | `gymnasium[box2d]` | Ambiente de simulação física do Lunar Lander (`LunarLander-v3`) |
+| `matplotlib.pyplot` | `matplotlib` | Geração de gráficos comparativos de fitness ao longo das gerações |
+
+---
+
+### **Comando de Instalação Rápida**
+
+Executa o seguinte comando no terminal (WSL / Linux / Windows) para instalar todas as dependências do projeto:
+
+```bash
+pip install "gymnasium[box2d]" numpy matplotlib pygame
