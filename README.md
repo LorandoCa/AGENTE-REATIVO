@@ -20,9 +20,8 @@ Este repositório contém a implementação e comparação de duas abordagens di
   - [Arquitetura da Rede Neuronal](#arquitetura-da-rede-neuronal)
   - [Operadores Evolutivos & Fitness](#operadores-evolutivos--fitness)
   - [Grelha de Experiências (Meta 1 & Meta 2)](#grelha-de-experiências)
-- [Requisitos e Instalação](#-requisitos-e-instalação)
+- [Requisitos e Instalação](#requisitos-e-instalação)
 - [Como Executar](#-como-executar)
-- [Resultados Obtidos](#-resultados-obtidos)
 - [Autores](#-autores)
 
 ---
