@@ -102,8 +102,7 @@ O algoritmo foi testado através de 8 experiências distintas parametrizadas da 
 
 ```text
 .
-├── reactive_agent.py          # Agente Reativo baseado em regras heurísticas
-├── neuroevolution_meta1.py    # Algoritmo Evolutivo (Ambiente sem vento / 12 neurónios)
-├── neuroevolution_meta2.py    # Algoritmo Evolutivo (Ambiente com vento / 24 neurónios)
-├── README.md                  # Documentação do projeto
-└── requirements.txt           # Dependências do projeto
+├── agente_reativo.py         # Agente reativo baseado em regras e controlo proporcional
+├── AI_agent_withoutWind.py   # Neuroevolução no ambiente sem vento (12 neurónios ocultos)
+├── AI_agent_withWind.py      # Neuroevolução no ambiente com vento e turbulência (24 neurónios ocultos)
+└── README.md                 # Documentação do projeto
