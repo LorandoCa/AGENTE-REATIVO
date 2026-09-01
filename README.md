@@ -107,7 +107,7 @@ O algoritmo foi testado através de 8 experiências distintas parametrizadas da 
 ├── AI_agent_withWind.py      # Neuroevolução no ambiente com vento e turbulência (24 neurónios ocultos)
 └── README.md                 # Documentação do projeto
 ```
-
+---
 ## 🛠️ Requisitos e Instalação
 
 ### **Pré-requisitos**
